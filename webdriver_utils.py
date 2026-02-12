@@ -34,7 +34,15 @@ def init_driver():
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         
         # Check if running in Docker or server environment
-        if os.path.exists('/.dockerenv') or os.environ.get('server_config') == 'True':
+        # Check multiple indicators: dockerenv file, server_config env var, or Railway env
+        is_docker = (
+            os.path.exists('/.dockerenv') or 
+            os.environ.get('server_config') in ['True', 'true', '1'] or
+            os.environ.get('RAILWAY_ENVIRONMENT') is not None or
+            os.path.exists('/usr/bin/chromium')  # Chromium installed = likely Docker
+        )
+        
+        if is_docker:
             logging.info("Running in Docker/server environment")
             chrome_options.binary_location = "/usr/bin/chromium"
             service = Service("/usr/bin/chromedriver")
