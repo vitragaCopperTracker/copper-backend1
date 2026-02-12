@@ -24,6 +24,7 @@ from youtube_scraper import main as run_youtube_scraper
 from news_scrape import (
     scrape_latest_articles_from_mining_site,
     scrape_mining_review_data,
+    scrape_lppm_com_news,
     scrape_miningmx_articles,
     scrape_metaldaily_articles,
     scrape_articles_from_miningweekly
@@ -201,7 +202,26 @@ def main():
             except Exception as e:
                 logging.error(f"Error scraping Mining Review: {e}")
             
-            # Source 3: MiningMX
+            # Source 3: LPPM.com
+            logging.info("Scraping LPPM.com...")
+            try:
+                articles = scrape_lppm_com_news(cursor)
+                for article in articles:
+                    insert_general_news(
+                        cursor, connection,
+                        source="LPPM.com",
+                        title=article.get('title'),
+                        url=article.get('link'),
+                        content=article.get('content'),
+                        summary=article.get('summary'),
+                        date=article.get('date')
+                    )
+                all_articles.extend(articles)
+                logging.info(f"LPPM.com: {len(articles)} articles")
+            except Exception as e:
+                logging.error(f"Error scraping LPPM.com: {e}")
+            
+            # Source 4: MiningMX
             logging.info("Scraping MiningMX...")
             try:
                 articles = scrape_miningmx_articles(cursor)
@@ -219,7 +239,7 @@ def main():
             except Exception as e:
                 logging.error(f"Error scraping MiningMX: {e}")
             
-            # Source 4: Metals Daily
+            # Source 5: Metals Daily
             logging.info("Scraping Metals Daily...")
             try:
                 articles = scrape_metaldaily_articles(cursor)
@@ -237,7 +257,7 @@ def main():
             except Exception as e:
                 logging.error(f"Error scraping Metals Daily: {e}")
             
-            # Source 5: Mining Weekly
+            # Source 6: Mining Weekly
             logging.info("Scraping Mining Weekly...")
             try:
                 articles = scrape_articles_from_miningweekly(cursor, 'copper')
