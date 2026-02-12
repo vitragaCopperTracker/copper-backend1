@@ -10,6 +10,8 @@ import os
 import sys
 from datetime import datetime
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -20,7 +22,6 @@ from database_operations import (
     insert_press_release,
     check_press_release_url_exists
 )
-from webdriver_utils import init_driver
 
 # Set up logging
 logging.basicConfig(
@@ -31,6 +32,26 @@ logging.basicConfig(
         logging.StreamHandler(sys.stdout)
     ]
 )
+
+def init_driver():
+    """Initialize Chrome WebDriver"""
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--disable-extensions")
+    chrome_options.add_argument("--disable-software-rasterizer")
+    chrome_options.add_argument("--disable-setuid-sandbox")
+    chrome_options.add_argument("--window-size=1024,768")
+    
+    chrome_options.binary_location = "/usr/bin/chromium"
+    service = Service("/usr/local/bin/chromedriver")
+    
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    driver.set_page_load_timeout(30)
+    driver.implicitly_wait(5)
+    return driver
 
 def load_copper_stocks():
     """Load copper stock tickers from CSV file"""
@@ -80,6 +101,7 @@ def get_yahoo_finance_url(ticker, exchange):
     yahoo_ticker = f"{ticker}{suffix}"
     
     return f"https://finance.yahoo.com/quote/{yahoo_ticker}/press-releases/"
+
 
 def scrape_press_releases_for_ticker(driver, ticker, company_name, exchange, cursor):
     """Optimized scraper - only get 1 press release per ticker"""
@@ -161,6 +183,7 @@ def scrape_press_releases_for_ticker(driver, ticker, company_name, exchange, cur
         logging.error(f"Error scraping {ticker}: {e}")
         return []
 
+
 def main():
     """Main function to scrape press releases for all copper stocks"""
     logging.info("Starting Optimized Press Release Scraper (1 per ticker)")
@@ -235,3 +258,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
