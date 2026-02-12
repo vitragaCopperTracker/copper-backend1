@@ -32,7 +32,6 @@ def init_driver():
         # Check if running in Docker or server environment
         is_docker = (
             os.path.exists('/.dockerenv') or 
-            os.environ.get('server_config') in ['True', 'true', '1'] or
             os.environ.get('RAILWAY_ENVIRONMENT') is not None or
             os.path.exists('/usr/bin/chromium')
         )
@@ -41,37 +40,21 @@ def init_driver():
             logging.info("Running in Docker/server environment")
             chrome_options.binary_location = "/usr/bin/chromium"
             
-            # Try to use chromium in webdriver mode (no separate driver needed)
-            chrome_options.add_argument("--remote-debugging-port=9222")
-            
-            # Use chromium directly without chromedriver
-            try:
-                driver = webdriver.Chrome(options=chrome_options)
-                driver.set_page_load_timeout(15)
-                driver.implicitly_wait(3)
-                logging.info("WebDriver initialized successfully with Chromium")
-                return driver
-            except Exception as e:
-                logging.error(f"Failed with direct Chromium: {e}")
-                # Fallback: try with explicit chromedriver path
-                try:
-                    service = Service("/usr/bin/chromedriver")
-                    driver = webdriver.Chrome(service=service, options=chrome_options)
-                    driver.set_page_load_timeout(15)
-                    driver.implicitly_wait(3)
-                    logging.info("WebDriver initialized successfully with ChromeDriver")
-                    return driver
-                except Exception as e2:
-                    logging.error(f"Failed with ChromeDriver: {e2}")
-                    return None
+            # Use explicit chromedriver path
+            service = Service("/usr/bin/chromedriver")
+            driver = webdriver.Chrome(service=service, options=chrome_options)
+            driver.set_page_load_timeout(30)  # Increased timeout for slow pages
+            driver.implicitly_wait(5)
+            logging.info("WebDriver initialized successfully with ChromeDriver")
+            return driver
         else:
             logging.info("Running in local environment")
             try:
                 from webdriver_manager.chrome import ChromeDriverManager
                 service = Service(ChromeDriverManager().install())
                 driver = webdriver.Chrome(service=service, options=chrome_options)
-                driver.set_page_load_timeout(15)
-                driver.implicitly_wait(3)
+                driver.set_page_load_timeout(30)  # Increased timeout for slow pages
+                driver.implicitly_wait(5)
                 logging.info("WebDriver initialized successfully")
                 return driver
             except Exception as e:
