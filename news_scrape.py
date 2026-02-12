@@ -334,7 +334,7 @@ def scrape_miningmx_articles(cursor):
 
     driver = init_driver()
     print("WebDriver setup complete.")
- 
+ 
     try:
         base_url = 'https://www.miningmx.com/news/copper/'
         print(f"Accessing base URL: {base_url}")
@@ -369,7 +369,7 @@ def scrape_miningmx_articles(cursor):
         print("WebDriver closed.")
 
 
-def scrape_metaldaily_articles(cursor)
+def scrape_metaldaily_articles(cursor):
 
     driver = init_driver()
 
