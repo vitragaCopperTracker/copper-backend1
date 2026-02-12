@@ -4,11 +4,12 @@ FROM python:3.12-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Set the working directory
 WORKDIR /app
 
-# Install dependencies and Chromium with specific versions
+# Install dependencies and Chromium
 RUN apt-get update && apt-get install -y \
     libpq-dev \
     build-essential \
@@ -16,8 +17,10 @@ RUN apt-get update && apt-get install -y \
     wget \
     unzip \
     chromium \
-    chromium-driver \
     xvfb \
+    libnss3 \
+    libgconf-2-4 \
+    libfontconfig1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -27,10 +30,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the application code
 COPY . /app/
 
-# Add Chromium to PATH and set environment variables
-ENV PATH="/usr/lib/chromium:$PATH"
+# Set environment variables for Chromium
 ENV CHROME_BIN="/usr/bin/chromium"
-ENV CHROMEDRIVER_PATH="/usr/bin/chromedriver"
 ENV server_config="True"
 ENV DISPLAY=:99
 
