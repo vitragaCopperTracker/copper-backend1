@@ -745,6 +745,289 @@ def delete_old_youtube_videos(cursor, connection, days_old=30):
         return 0
 
 
+
+# ============================================================================
+# GENERAL NEWS OPERATIONS
+# ============================================================================
+
+def insert_general_news(cursor, connection, source, title, url, content=None, summary=None, image_url=None, date=None):
+    """Insert a general news article into the database"""
+    try:
+        # Generate a unique ID
+        news_id = str(uuid.uuid4())
+        
+        # Use current date if no date provided
+        if not date:
+            date = datetime.now().strftime("%Y-%m-%d")
+        
+        insert_query = """
+            INSERT INTO api_app_generalnews (
+                id, source, title, url, content, summary, image_url, date, created_at, updated_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT (url) DO UPDATE SET
+                title = EXCLUDED.title,
+                content = EXCLUDED.content,
+                summary = EXCLUDED.summary,
+                image_url = EXCLUDED.image_url,
+                date = EXCLUDED.date,
+                updated_at = CURRENT_TIMESTAMP;
+        """
+        
+        cursor.execute(insert_query, (news_id, source, title, url, content, summary, image_url, date))
+        connection.commit()
+        logging.info(f"Successfully inserted general news: {title[:50]}...")
+        return True
+        
+    except Exception as e:
+        logging.error(f"Error inserting general news: {e}")
+        connection.rollback()
+        return False
+
+def check_general_news_url_exists(cursor, url):
+    """Check if a general news URL already exists in the database"""
+    try:
+        check_query = "SELECT COUNT(*) FROM api_app_generalnews WHERE url = %s;"
+        cursor.execute(check_query, (url,))
+        count = cursor.fetchone()[0]
+        return count > 0
+    except Exception as e:
+        logging.error(f"Error checking general news URL existence: {e}")
+        return False
+
+def get_recent_general_news(cursor, limit=50, source=None):
+    """Get recent general news articles"""
+    try:
+        if source:
+            query = """
+            SELECT id, source, title, url, content, summary, image_url, date, created_at
+            FROM api_app_generalnews 
+            WHERE source = %s
+            ORDER BY created_at DESC 
+            LIMIT %s;
+            """
+            cursor.execute(query, (source, limit))
+        else:
+            query = """
+            SELECT id, source, title, url, content, summary, image_url, date, created_at
+            FROM api_app_generalnews 
+            ORDER BY created_at DESC 
+            LIMIT %s;
+            """
+            cursor.execute(query, (limit,))
+        
+        results = cursor.fetchall()
+        
+        news = []
+        for row in results:
+            news.append({
+                'id': row[0],
+                'source': row[1],
+                'title': row[2],
+                'url': row[3],
+                'content': row[4],
+                'summary': row[5],
+                'image_url': row[6],
+                'date': row[7],
+                'created_at': row[8]
+            })
+        
+        return news
+        
+    except Exception as e:
+        logging.error(f"Error getting recent general news: {e}")
+        return []
+
+def get_general_news_stats(cursor):
+    """Get statistics about general news in the database"""
+    try:
+        stats_query = """
+        SELECT 
+            COUNT(*) as total_articles,
+            COUNT(DISTINCT source) as unique_sources,
+            MIN(created_at) as oldest_article,
+            MAX(created_at) as newest_article,
+            COUNT(CASE WHEN image_url IS NOT NULL THEN 1 END) as articles_with_images
+        FROM api_app_generalnews;
+        """
+        
+        cursor.execute(stats_query)
+        result = cursor.fetchone()
+        
+        return {
+            'total_articles': result[0],
+            'unique_sources': result[1],
+            'oldest_article': result[2],
+            'newest_article': result[3],
+            'articles_with_images': result[4]
+        }
+        
+    except Exception as e:
+        logging.error(f"Error getting general news stats: {e}")
+        return None
+
+def delete_old_general_news(cursor, connection, days_old=90):
+    """Delete general news articles older than specified days"""
+    try:
+        delete_query = """
+        DELETE FROM api_app_generalnews 
+        WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '%s days';
+        """
+        
+        cursor.execute(delete_query, (days_old,))
+        deleted_count = cursor.rowcount
+        connection.commit()
+        
+        logging.info(f"Deleted {deleted_count} general news articles older than {days_old} days")
+        return deleted_count
+        
+    except Exception as e:
+        logging.error(f"Error deleting old general news: {e}")
+        connection.rollback()
+        return 0
+
+
+# ============================================================================
+# GENERAL NEWS OPERATIONS
+# ============================================================================
+
+def insert_general_news(cursor, connection, source, title, url, content=None, summary=None, image_url=None, date=None):
+    """Insert a general news article into the database"""
+    try:
+        # Generate a unique ID
+        news_id = str(uuid.uuid4())
+        
+        # Use current date if no date provided
+        if not date:
+            date = datetime.now().strftime("%Y-%m-%d")
+        
+        insert_query = """
+            INSERT INTO api_app_generalnews (
+                id, source, title, url, content, summary, image_url, date, created_at, updated_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT (url) DO UPDATE SET
+                title = EXCLUDED.title,
+                content = EXCLUDED.content,
+                summary = EXCLUDED.summary,
+                image_url = EXCLUDED.image_url,
+                date = EXCLUDED.date,
+                updated_at = CURRENT_TIMESTAMP;
+        """
+        
+        cursor.execute(insert_query, (news_id, source, title, url, content, summary, image_url, date))
+        connection.commit()
+        logging.info(f"Successfully inserted general news: {title[:50]}...")
+        return True
+        
+    except Exception as e:
+        logging.error(f"Error inserting general news: {e}")
+        connection.rollback()
+        return False
+
+def check_general_news_url_exists(cursor, url):
+    """Check if a general news URL already exists in the database"""
+    try:
+        check_query = "SELECT COUNT(*) FROM api_app_generalnews WHERE url = %s;"
+        cursor.execute(check_query, (url,))
+        count = cursor.fetchone()[0]
+        return count > 0
+    except Exception as e:
+        logging.error(f"Error checking general news URL existence: {e}")
+        return False
+
+def get_recent_general_news(cursor, limit=50, source=None):
+    """Get recent general news articles"""
+    try:
+        if source:
+            query = """
+            SELECT id, source, title, url, content, summary, image_url, date, created_at
+            FROM api_app_generalnews 
+            WHERE source = %s
+            ORDER BY created_at DESC 
+            LIMIT %s;
+            """
+            cursor.execute(query, (source, limit))
+        else:
+            query = """
+            SELECT id, source, title, url, content, summary, image_url, date, created_at
+            FROM api_app_generalnews 
+            ORDER BY created_at DESC 
+            LIMIT %s;
+            """
+            cursor.execute(query, (limit,))
+        
+        results = cursor.fetchall()
+        
+        news = []
+        for row in results:
+            news.append({
+                'id': row[0],
+                'source': row[1],
+                'title': row[2],
+                'url': row[3],
+                'content': row[4],
+                'summary': row[5],
+                'image_url': row[6],
+                'date': row[7],
+                'created_at': row[8]
+            })
+        
+        return news
+        
+    except Exception as e:
+        logging.error(f"Error getting recent general news: {e}")
+        return []
+
+def get_general_news_stats(cursor):
+    """Get statistics about general news in the database"""
+    try:
+        stats_query = """
+        SELECT 
+            COUNT(*) as total_articles,
+            COUNT(DISTINCT source) as unique_sources,
+            MIN(created_at) as oldest_article,
+            MAX(created_at) as newest_article,
+            COUNT(CASE WHEN image_url IS NOT NULL THEN 1 END) as articles_with_images
+        FROM api_app_generalnews;
+        """
+        
+        cursor.execute(stats_query)
+        result = cursor.fetchone()
+        
+        return {
+            'total_articles': result[0],
+            'unique_sources': result[1],
+            'oldest_article': result[2],
+            'newest_article': result[3],
+            'articles_with_images': result[4]
+        }
+        
+    except Exception as e:
+        logging.error(f"Error getting general news stats: {e}")
+        return None
+
+def delete_old_general_news(cursor, connection, days_old=90):
+    """Delete general news articles older than specified days"""
+    try:
+        delete_query = """
+        DELETE FROM api_app_generalnews 
+        WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '%s days';
+        """
+        
+        cursor.execute(delete_query, (days_old,))
+        deleted_count = cursor.rowcount
+        connection.commit()
+        
+        logging.info(f"Deleted {deleted_count} general news articles older than {days_old} days")
+        return deleted_count
+        
+    except Exception as e:
+        logging.error(f"Error deleting old general news: {e}")
+        connection.rollback()
+        return 0
+
+
 # ============================================================================
 # GENERAL NEWS OPERATIONS
 # ============================================================================

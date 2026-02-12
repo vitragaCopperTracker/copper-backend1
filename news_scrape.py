@@ -5,7 +5,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import WebDriverException
-from webdriver_manager.chrome import ChromeDriverManager
 from urllib.parse import urljoin
 import os
 import time
@@ -13,9 +12,27 @@ import random
 from selenium.webdriver.common.action_chains import ActionChains
 from datetime import datetime
 from insert_queries import check_url_exists
-from webdriver_utils import init_driver
 
-server_config = os.getenv("server_config")
+
+def init_driver():
+    """Initialize Chrome WebDriver"""
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--disable-extensions")
+    chrome_options.add_argument("--disable-software-rasterizer")
+    chrome_options.add_argument("--disable-setuid-sandbox")
+    chrome_options.add_argument("--window-size=1024,768")
+    
+    chrome_options.binary_location = "/usr/bin/chromium"
+    service = Service("/usr/local/bin/chromedriver")
+    
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    driver.set_page_load_timeout(30)
+    driver.implicitly_wait(5)
+    return driver
 
 
 def scrape_latest_articles_from_mining_site(cursor):
@@ -334,7 +351,7 @@ def scrape_miningmx_articles(cursor):
 
     driver = init_driver()
     print("WebDriver setup complete.")
- 
+ 
     try:
         base_url = 'https://www.miningmx.com/news/copper/'
         print(f"Accessing base URL: {base_url}")
@@ -493,9 +510,5 @@ def scrape_articles_from_miningweekly(cursor, metal_name):
     finally:
         if driver:
             driver.quit()
-
-
-
-
 
 
