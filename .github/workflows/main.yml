@@ -13,18 +13,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Chrome & ChromeDriver
+        uses: browser-actions/setup-chrome@v1
+        id: setup-chrome
+        with:
+          chrome-version: stable
+          install-chromedriver: true
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            libpq-dev \
-            build-essential \
-            curl \
-            wget \
-            unzip \
-            chromium-browser \
-            chromium-chromedriver \
-            xvfb
+          sudo apt-get install -y xvfb libpq-dev build-essential
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -40,14 +39,13 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Install Python dependencies
-        run: pip install --no-cache-dir -r requirements.txt
+        run: pip install -r requirements.txt
 
       - name: Run pipeline
-        run: Xvfb :99 -screen 0 1024x768x24 & sleep 1 && python app.py
+        run: xvfb-run --server-args="-screen 0 1024x768x24" python app.py
         env:
-          DISPLAY: ":99"
-          CHROME_BIN: /usr/bin/chromium-browser
-          CHROMEDRIVER_PATH: /usr/lib/chromium-browser/chromedriver
+          CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
+          CHROMEDRIVER_PATH: ${{ steps.setup-chrome.outputs.chromedriver-path }}
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
