@@ -1,0 +1,56 @@
+name: Copper Stock Pipeline 1
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libpq-dev \
+            build-essential \
+            curl \
+            wget \
+            unzip \
+            chromium-browser \
+            chromium-chromedriver \
+            xvfb
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Python dependencies
+        run: pip install --no-cache-dir -r requirements.txt
+
+      - name: Run pipeline
+        run: Xvfb :99 -screen 0 1024x768x24 & sleep 1 && python app.py
+        env:
+          DISPLAY: ":99"
+          CHROME_BIN: /usr/bin/chromium-browser
+          CHROMEDRIVER_PATH: /usr/lib/chromium-browser/chromedriver
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_USER: ${{ secrets.DB_USER }}
+          SERVER_CONFIG: ${{ secrets.SERVER_CONFIG }}
