@@ -160,7 +160,7 @@ def search_youtube_videos(query, max_results=10):
             
             # Check if video is within the last 4 weeks
             parsed_date = parse_youtube_publish_time(video.get('publish_time', ''))
-            four_weeks_ago = (datetime.now() - timedelta(weeks=4)).date()
+            four_weeks_ago = (datetime.now() - timedelta(weeks=24)).date()
             if parsed_date < four_weeks_ago:
                 logger.info(f"Skipping old video ({video.get('publish_time', 'Unknown date')}): {video.get('title', 'Unknown')}")
                 continue
