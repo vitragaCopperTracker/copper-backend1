@@ -67,7 +67,7 @@ def search_youtube_videos(query, max_results=10):
         
         search_results = YoutubeSearch(query, max_results=max_results * 5).to_dict()
         
-        cutoff_date = (datetime.now() - timedelta(weeks=24)).date()
+        # cutoff_date = (datetime.now() - timedelta(weeks=24)).date()
         video_list = []
 
         for video in search_results:
@@ -113,14 +113,14 @@ def search_youtube_videos(query, max_results=10):
                 except:
                     pass
             
-            if not is_relevant_video(video.get('title', ''), video.get('channel', ''), duration):
-                logger.info(f"Skipping irrelevant/low-quality video: {video.get('title', 'Unknown')}")
-                continue
+            # if not is_relevant_video(video.get('title', ''), video.get('channel', ''), duration):
+            #     logger.info(f"Skipping irrelevant/low-quality video: {video.get('title', 'Unknown')}")
+            #     continue
             
             parsed_date = parse_youtube_publish_time(video.get('publish_time', ''))
-            if parsed_date < cutoff_date:
-                logger.info(f"Skipping old video ({video.get('publish_time', 'Unknown date')}): {video.get('title', 'Unknown')}")
-                continue
+            # if parsed_date < cutoff_date:
+            #     logger.info(f"Skipping old video ({video.get('publish_time', 'Unknown date')}): {video.get('title', 'Unknown')}")
+            #     continue
             
             video_list.append(video_info)
         
