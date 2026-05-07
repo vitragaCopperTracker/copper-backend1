@@ -287,9 +287,16 @@ def main():
         connection, cursor = get_curser()
         logger.info("Connected to database successfully")
         
-        logger.info("Deleting old videos...")
-        delete_all_youtube_videos(cursor, connection)
+        # delete videos older than 3 months
+        logger.info("Cleaning up old videos...")
+        cursor.execute("""
+            DELETE FROM api_app_videopagedata 
+            WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '3 months'
+        """)
+        connection.commit()
+        logger.info("Old videos cleaned up")
         
+        # scrape new videos
         all_videos = scrape_youtube_videos()
         
         total_inserted = 0
@@ -335,9 +342,7 @@ def main():
                 logger.info(f"Inserted {inserted_count} videos for category '{category}'")
                 total_inserted += inserted_count
         
-        logger.info("=" * 60)
-        logger.info(f"YouTube Videos Processing Complete! Total inserted: {total_inserted}")
-        logger.info("=" * 60)
+        logger.info(f"Total videos inserted: {total_inserted}")
 
     except Exception as e:
         logger.error(f"Script failed: {e}")
