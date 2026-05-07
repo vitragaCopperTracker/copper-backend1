@@ -1,3 +1,19 @@
+import time
+from datetime import datetime
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from database_operations import insert_substack_post, check_substack_url_exists
+from database_config import get_curser
+import re
+import os
+import logging
+
+
 def init_driver():
     chrome_options = Options()
     chrome_options.add_argument("--headless=new")
@@ -20,35 +36,41 @@ def init_driver():
     return driver
 
 
+def wait_and_find_element(driver, by, value, timeout=10):
+    try:
+        element = WebDriverWait(driver, timeout).until(
+            EC.presence_of_element_located((by, value))
+        )
+        return element
+    except TimeoutException:
+        return None
+
+
 def scrape_substack_copper_posts(cursor=None, max_posts=10):
     driver = init_driver()
     if not driver:
         logging.error("Failed to initialize WebDriver")
         return []
-    
+
     try:
         print("Navigating to Substack search page...")
         search_url = "https://substack.com/search/copper?sort=new&searching=all_posts"
         driver.get(search_url)
-        
-        # longer wait for JS to load
+
         print("Waiting for search results...")
         time.sleep(8)
 
-        # scroll slowly like a human
         print("Loading more content...")
         for _ in range(5):
             driver.execute_script("window.scrollBy(0, 500);")
             time.sleep(1.5)
 
-        # print page source for debugging
         print(f"Page title: {driver.title}")
         print(f"Page URL: {driver.current_url}")
 
-        # try multiple selectors
         print("Finding article links...")
         links = []
-        
+
         selectors = [
             "a[href*='/p/']",
             "a.post-preview-title",
@@ -56,13 +78,13 @@ def scrape_substack_copper_posts(cursor=None, max_posts=10):
             "h3 a",
             "div.post-preview a",
         ]
-        
+
         for selector in selectors:
             links = driver.find_elements(By.CSS_SELECTOR, selector)
             if links:
                 print(f"Found {len(links)} links with selector: {selector}")
                 break
-        
+
         print(f"Found {len(links)} links")
 
         urls = []
@@ -86,7 +108,7 @@ def scrape_substack_copper_posts(cursor=None, max_posts=10):
                 print(f"Scraping URL: {url}")
                 driver.get(url)
                 time.sleep(3)
-                
+
                 article = wait_and_find_element(driver, By.TAG_NAME, "article", timeout=10)
                 if not article:
                     print("Article content not found, skipping...")
@@ -138,6 +160,8 @@ def scrape_substack_copper_posts(cursor=None, max_posts=10):
                         "date": date
                     })
                     print(f"Successfully scraped: {title[:50]}...")
+                else:
+                    print(f"Skipping article due to missing title or content")
 
             except Exception as e:
                 print(f"Error scraping {url}: {e}")
@@ -145,10 +169,71 @@ def scrape_substack_copper_posts(cursor=None, max_posts=10):
 
         print(f"Successfully scraped {len(scraped_data)} Substack posts")
         return scraped_data
-        
+
     except Exception as e:
         print(f"Error in scraping Substack: {e}")
         return []
     finally:
         if driver:
             driver.quit()
+
+
+def insert_substack_posts_to_db(cursor, connection, posts):
+    successful_inserts = 0
+    for post in posts:
+        try:
+            if not check_substack_url_exists(cursor, post["url"]):
+                insert_substack_post(
+                    cursor=cursor,
+                    connection=connection,
+                    **post
+                )
+                successful_inserts += 1
+                print(f"Successfully inserted: {post['title'][:50]}...")
+            else:
+                print(f"Skipping duplicate: {post['title'][:50]}...")
+        except Exception as e:
+            print(f"Error inserting post: {e}")
+            continue
+
+    print(f"Inserted {successful_inserts} out of {len(posts)} posts")
+
+
+def ensure_table_exists(cursor, connection):
+    try:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS api_app_coppersubstack (
+                id VARCHAR(255) PRIMARY KEY,
+                title TEXT NOT NULL,
+                url TEXT UNIQUE NOT NULL,
+                content TEXT,
+                subtitle TEXT,
+                image_url TEXT,
+                date DATE NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        connection.commit()
+        print("Table api_app_coppersubstack is ready")
+    except Exception as e:
+        print(f"Error ensuring table exists: {e}")
+        raise e
+
+
+if __name__ == "__main__":
+    connection, cursor = get_curser()
+
+    try:
+        ensure_table_exists(cursor, connection)
+        print("Starting Substack copper posts scraping...")
+        posts = scrape_substack_copper_posts(cursor)
+        if posts:
+            print(f"Found {len(posts)} posts. Inserting into database...")
+            insert_substack_posts_to_db(cursor, connection, posts)
+        else:
+            print("No posts found to insert")
+    except Exception as e:
+        print(f"Error in main execution: {e}")
+    finally:
+        connection.close()
+        print("Database connection closed")
