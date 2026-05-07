@@ -31,19 +31,19 @@ def parse_youtube_publish_time(publish_time_str):
         
         publish_time_str = publish_time_str.lower().strip()
         
-        if 'hour' in publish_time_str:
+        if 'hour' in publish_time_str or 'h ago' in publish_time_str:
             hours = int(re.search(r'(\d+)', publish_time_str).group(1))
             return (datetime.now() - timedelta(hours=hours)).date()
-        elif 'day' in publish_time_str:
+        elif 'day' in publish_time_str or 'd ago' in publish_time_str:
             days = int(re.search(r'(\d+)', publish_time_str).group(1))
             return (datetime.now() - timedelta(days=days)).date()
-        elif 'week' in publish_time_str:
+        elif 'week' in publish_time_str or 'w ago' in publish_time_str:
             weeks = int(re.search(r'(\d+)', publish_time_str).group(1))
             return (datetime.now() - timedelta(weeks=weeks)).date()
-        elif 'month' in publish_time_str:
+        elif 'month' in publish_time_str or 'mo ago' in publish_time_str:
             months = int(re.search(r'(\d+)', publish_time_str).group(1))
             return (datetime.now() - timedelta(days=months * 30)).date()
-        elif 'year' in publish_time_str:
+        elif 'year' in publish_time_str or 'y ago' in publish_time_str:
             years = int(re.search(r'(\d+)', publish_time_str).group(1))
             return (datetime.now() - timedelta(days=years * 365)).date()
         else:
@@ -54,12 +54,11 @@ def parse_youtube_publish_time(publish_time_str):
         logger.error(f"Error parsing publish time '{publish_time_str}': {e}")
         return datetime.now().date()
 
-def validate_thumbnail(thumbnail_url, timeout=3):
+def clean_views(raw_views):
     try:
-        response = requests.head(thumbnail_url, timeout=timeout)
-        return response.status_code == 200
+        return int(str(raw_views).replace(',', '').replace('views', '').strip())
     except:
-        return False
+        return 0
 
 def search_youtube_videos(query, max_results=10):
     try:
@@ -67,7 +66,6 @@ def search_youtube_videos(query, max_results=10):
         
         search_results = YoutubeSearch(query, max_results=max_results * 5).to_dict()
         
-        # cutoff_date = (datetime.now() - timedelta(weeks=24)).date()
         video_list = []
 
         for video in search_results:
@@ -88,18 +86,6 @@ def search_youtube_videos(query, max_results=10):
             
             thumbnail_url = f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
             
-            video_info = {
-                'title': video.get('title', ''),
-                'link': f"https://www.youtube.com{url_suffix}",
-                'duration': video.get('duration', ''),
-                'views': video.get('views', ''),
-                'channel': video.get('channel', ''),
-                'publish_time': video.get('publish_time', ''),
-                'parsed_date': parse_youtube_publish_time(video.get('publish_time', '')),
-                'video_id': video_id,
-                'thumbnail_url': thumbnail_url
-            }
-            
             duration = video.get('duration', '')
             if duration and ':' in duration:
                 try:
@@ -112,17 +98,18 @@ def search_youtube_videos(query, max_results=10):
                             continue
                 except:
                     pass
-            
-            # if not is_relevant_video(video.get('title', ''), video.get('channel', ''), duration):
-            #     logger.info(f"Skipping irrelevant/low-quality video: {video.get('title', 'Unknown')}")
-            #     continue
-            
-            parsed_date = parse_youtube_publish_time(video.get('publish_time', ''))
-            # if parsed_date < cutoff_date:
-            #     logger.info(f"Skipping old video ({video.get('publish_time', 'Unknown date')}): {video.get('title', 'Unknown')}")
-            #     continue
-            
-            video_list.append(video_info)
+
+            video_list.append({
+                'title': video.get('title', ''),
+                'link': f"https://www.youtube.com{url_suffix}",
+                'duration': duration,
+                'views': clean_views(video.get('views', '')),
+                'channel': video.get('channel', ''),
+                'publish_time': video.get('publish_time', ''),
+                'parsed_date': parse_youtube_publish_time(video.get('publish_time', '')),
+                'video_id': video_id,
+                'thumbnail_url': thumbnail_url
+            })
         
         video_list.sort(key=lambda x: x['parsed_date'], reverse=True)
         final_videos = video_list[:max_results]
@@ -248,7 +235,6 @@ def scrape_youtube_videos():
     try:
         for category, queries in search_queries.items():
             logger.info(f"\nProcessing category: {category}")
-            
             all_videos_for_category = []
             
             for query in queries:
@@ -287,7 +273,6 @@ def main():
         connection, cursor = get_curser()
         logger.info("Connected to database successfully")
         
-        # delete videos older than 3 months
         logger.info("Cleaning up old videos...")
         cursor.execute("""
             DELETE FROM api_app_videopagedata 
@@ -296,7 +281,6 @@ def main():
         connection.commit()
         logger.info("Old videos cleaned up")
         
-        # scrape new videos
         all_videos = scrape_youtube_videos()
         
         total_inserted = 0
