@@ -273,15 +273,22 @@ def main():
         connection, cursor = get_curser()
         logger.info("Connected to database successfully")
         
-        logger.info("Cleaning up old videos...")
-        cursor.execute("""
-            DELETE FROM api_app_videopagedata 
-            WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '3 months'
-        """)
-        connection.commit()
-        logger.info("Old videos cleaned up")
-        
+        # scrape first
         all_videos = scrape_youtube_videos()
+        
+        total_new = sum(len(videos) for videos in all_videos.values())
+        
+        # only cleanup if we actually found new videos
+        if total_new > 0:
+            logger.info(f"Found {total_new} new videos, cleaning up old ones...")
+            cursor.execute("""
+                DELETE FROM api_app_videopagedata 
+                WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '3 months'
+            """)
+            connection.commit()
+            logger.info("Old videos cleaned up")
+        else:
+            logger.warning("No new videos found — skipping cleanup to preserve existing DB data")
         
         total_inserted = 0
         for category, videos in all_videos.items():
